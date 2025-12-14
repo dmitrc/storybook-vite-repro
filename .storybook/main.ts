@@ -1,5 +1,29 @@
 import type { StorybookConfig } from "@storybook/nextjs-vite";
+import { readFileSync } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function _d(p: string) {
+  return path.resolve(__dirname, p);
+}
+
+const mocks = {
+  [_d("../src/utils/example.ts")]: _d("../mocks/utils/example.ts"),
+};
+
+const mockPlugin = {
+  name: "storybook-mock-module",
+  enforce: "pre" as const,
+  load(id: string) {
+    if (Object.keys(mocks).includes(id)) {
+      const mockContent = readFileSync(mocks[id], "utf-8");
+      return mockContent;
+    }
+    return null;
+  },
+};
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
@@ -9,19 +33,8 @@ const config: StorybookConfig = {
     options: {},
   },
   viteFinal: async (config) => {
-    config.resolve ||= {};
-    config.resolve.alias = {
-      ...config.resolve.alias,
-
-      // Supposed to resolve to mock module, but the story still uses the real module
-      // This breaks things if the real module had server-only deps (like `fs`)
-      "@/utils/example": path.resolve(__dirname, "../mocks/utils/example.ts"),
-
-      // If you uncomment this line, build will complain:
-      // > [ERROR] No matching export in "mocks/utils/empty.ts" for import "hello"
-      // So the alias syntax I am using must be correct, right?
-      // "@/utils/example": path.resolve(__dirname, "../mocks/utils/empty.ts"),
-    };
+    config.plugins ||= [];
+    config.plugins.unshift(mockPlugin);
 
     return config;
   },
