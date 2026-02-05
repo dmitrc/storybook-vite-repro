@@ -1,5 +1,4 @@
 import type { StorybookConfig } from "@storybook/nextjs-vite";
-import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -9,22 +8,6 @@ function _d(p: string) {
   return path.resolve(__dirname, p);
 }
 
-const mocks = {
-  [_d("../src/utils/example.ts")]: _d("../mocks/utils/example.ts"),
-};
-
-const mockPlugin = {
-  name: "storybook-mock-module",
-  enforce: "pre" as const,
-  load(id: string) {
-    if (Object.keys(mocks).includes(id)) {
-      const mockContent = readFileSync(mocks[id], "utf-8");
-      return mockContent;
-    }
-    return null;
-  },
-};
-
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   addons: [],
@@ -33,8 +16,11 @@ const config: StorybookConfig = {
     options: {},
   },
   viteFinal: async (config) => {
-    config.plugins ||= [];
-    config.plugins.unshift(mockPlugin);
+    config.resolve ||= {};
+    config.resolve.alias = {
+      "@/utils/example": _d("../mocks/utils/example.ts"),
+      ...config.resolve.alias,
+    };
 
     return config;
   },
